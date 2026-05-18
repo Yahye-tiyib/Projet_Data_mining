@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Observation {
+  id        Int      @id @default(autoincrement())
+  product   String
+  price     Float
+  quantity  Float    @default(1)
+  unit      String   @default("kg")
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime @default(now())
+}
