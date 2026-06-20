@@ -33,6 +33,78 @@ export default function HomePage() {
           </a>
         </div>
       </section>
+      {/* Guide étape par étape pour l'utilisateur */}
+<section className="py-16 bg-white">
+  <div className="container mx-auto px-4">
+    <h2 className="text-3xl font-bold text-center text-green-700 mb-8">
+      📋 Comment saisir un prix en 3 étapes ?
+    </h2>
+    
+    <div className="grid md:grid-cols-3 gap-8">
+      
+      {/* Étape 1 */}
+      <div className="text-center">
+        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <span className="text-3xl font-bold text-blue-600">1</span>
+        </div>
+        <h3 className="text-xl font-semibold mb-2">Créez un compte</h3>
+        <p className="text-gray-600">
+          Cliquez sur <strong>"Connexion"</strong> en haut à droite, puis{" "}
+          <strong>"S'inscrire"</strong>. Remplissez votre email et mot de passe.
+        </p>
+        <div className="mt-3 text-sm text-gray-500">
+          ⏱️ 1 minute
+        </div>
+      </div>
+
+      {/* Étape 2 */}
+      <div className="text-center">
+        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <span className="text-3xl font-bold text-blue-600">2</span>
+        </div>
+        <h3 className="text-xl font-semibold mb-2">Connectez-vous</h3>
+        <p className="text-gray-600">
+          Utilisez votre email et mot de passe pour vous connecter. 
+          Vous verrez alors le menu <strong>"Saisir un prix"</strong> apparaître.
+        </p>
+        <div className="mt-3 text-sm text-gray-500">
+          🔐 Sécurisé
+        </div>
+      </div>
+
+      {/* Étape 3 */}
+      <div className="text-center">
+        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <span className="text-3xl font-bold text-blue-600">3</span>
+        </div>
+        <h3 className="text-xl font-semibold mb-2">Saisissez un prix</h3>
+        <p className="text-gray-600">
+          Cliquez sur <strong>"Saisir un prix"</strong>, sélectionnez le produit, 
+          entrez le prix observé et validez. Votre position GPS sera automatiquement capturée.
+        </p>
+        <div className="mt-3 text-sm text-gray-500">
+          📍 10 secondes
+        </div>
+      </div>
+    </div>
+
+    {/* Bouton d'appel à l'action */}
+    <div className="text-center mt-10">
+      <a 
+        href="/login" 
+        className="inline-block bg-green-600 text-white px-8 py-3 rounded-lg font-semibold text-lg hover:bg-green-700 transition shadow-lg"
+      >
+        🚀 Commencer maintenant
+      </a>
+      <p className="text-sm text-gray-500 mt-3">
+        Gratuit et ouvert à tous les citoyens
+      </p>
+    </div>
+  </div>
+</section>
+
+{/* Section aide - Foire Aux Questions */}
+
 
       {/* Section Features */}
       <section className="py-16 bg-gray-50">

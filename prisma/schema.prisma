@@ -7,13 +7,47 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id            Int           @id @default(autoincrement())
+  email         String        @unique
+  name          String
+  password      String
+  role          UserRole      @default(USER)
+  createdAt     DateTime      @default(now())
+  observations  Observation[]
+}
+
 model Observation {
-  id        Int      @id @default(autoincrement())
-  product   String
-  price     Float
-  quantity  Float    @default(1)
-  unit      String   @default("kg")
-  latitude  Float?
-  longitude Float?
-  createdAt DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  product     String
+  price       Float
+  quantity    Float    @default(1)
+  unit        String   @default("kg")
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  
+  // Contrainte unique : un utilisateur ne peut saisir qu'un prix par jour par produit
+  @@unique([userId, product, date])  // date sera extraite de createdAt
+}
+
+// Nouvelle table pour le verrouillage des emplacements
+model DailyMarketLock {
+  id          Int      @id @default(autoincrement())
+  product     String
+  latitude    Float
+  longitude   Float
+  lockedAt    DateTime @default(now())
+  expiresAt   DateTime
+  
+  // Contrainte unique : un emplacement ne peut avoir qu'un prix par jour par produit
+  @@unique([product, latitude, longitude, date])
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }
