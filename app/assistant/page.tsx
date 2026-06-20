@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import { 
   Send, Bot, User, Loader2, 
   MessageSquare, Trash2, Edit2, 
-  PlusCircle, Menu, X, Clock 
+  PlusCircle, Menu, X, Clock, LogOut 
 } from 'lucide-react';
 
 interface Message {
@@ -24,7 +25,8 @@ interface Conversation {
 }
 
 export default function AIPage() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
+  const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -35,12 +37,21 @@ export default function AIPage() {
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState('');
 
-  // Charger les conversations depuis localStorage
+  // Rediriger si non connecté
   useEffect(() => {
-    const saved = localStorage.getItem('souk_ai_conversations');
+    if (!isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, router]);
+
+  // Charger les conversations depuis localStorage avec l'ID utilisateur
+  useEffect(() => {
+    if (!user) return;
+    
+    const storageKey = `souk_ai_conversations_${user.id}`;
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Restaurer les dates
       const restored = parsed.map((conv: any) => ({
         ...conv,
         createdAt: new Date(conv.createdAt),
@@ -52,7 +63,6 @@ export default function AIPage() {
       }));
       setConversations(restored);
       
-      // Ouvrir la conversation la plus récente
       if (restored.length > 0) {
         setCurrentConversationId(restored[0].id);
         setMessages(restored[0].messages);
@@ -62,21 +72,21 @@ export default function AIPage() {
     } else {
       newConversation();
     }
-  }, []);
+  }, [user]);
 
   // Sauvegarder les conversations
   useEffect(() => {
-    if (conversations.length > 0) {
-      localStorage.setItem('souk_ai_conversations', JSON.stringify(conversations));
-    }
-  }, [conversations]);
+    if (!user || conversations.length === 0) return;
+    
+    const storageKey = `souk_ai_conversations_${user.id}`;
+    localStorage.setItem(storageKey, JSON.stringify(conversations));
+  }, [conversations, user]);
 
   // Scroll automatique
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Nouvelle conversation
   const newConversation = () => {
     const newId = Date.now().toString();
     const welcomeMessage: Message = {
@@ -99,7 +109,6 @@ export default function AIPage() {
     setMessages([welcomeMessage]);
   };
 
-  // Changer de conversation
   const switchConversation = (convId: string) => {
     const conv = conversations.find(c => c.id === convId);
     if (conv) {
@@ -108,7 +117,6 @@ export default function AIPage() {
     }
   };
 
-  // Supprimer une conversation
   const deleteConversation = (convId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const newConversations = conversations.filter(c => c.id !== convId);
@@ -123,7 +131,6 @@ export default function AIPage() {
     }
   };
 
-  // Renommer une conversation
   const startRename = (conv: Conversation, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingTitleId(conv.id);
@@ -140,7 +147,6 @@ export default function AIPage() {
     setEditTitleValue('');
   };
 
-  // Envoyer un message
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
@@ -173,8 +179,14 @@ export default function AIPage() {
     try {
       const response = await fetch('/api/assistant/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: input }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ 
+          question: input,
+          userId: user?.id
+        }),
       });
 
       const data = await response.json();
@@ -182,14 +194,13 @@ export default function AIPage() {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.answer,
+        content: data.answer || 'Je n\'ai pas pu traiter votre demande.',
         timestamp: new Date()
       };
       
       const finalMessages = [...updatedMessages, assistantMessage];
       setMessages(finalMessages);
       
-      // Mettre à jour la conversation avec la réponse
       setConversations(conversations.map(conv =>
         conv.id === currentConversationId ? 
         { ...conv, messages: finalMessages, updatedAt: new Date() } : conv
@@ -235,27 +246,46 @@ export default function AIPage() {
     return date.toLocaleDateString('fr-FR');
   };
 
+  // Si non connecté, ne pas afficher
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100">
       
       {/* Header */}
       <header className="bg-gradient-to-r from-green-700 to-green-800 text-white shadow-lg sticky top-0 z-20">
         <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 rounded-lg hover:bg-white/20 transition lg:hidden"
-            >
-              <Menu size={20} />
-            </button>
-            <div className="flex items-center gap-3">
-              <Bot size={28} />
-              <div>
-                <h1 className="text-xl font-bold">Assistant IA Souk Data Mining</h1>
-                <p className="text-green-100 text-sm hidden sm:block">
-                  Je réponds à vos questions sur les prix et l'inflation
-                </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="p-2 rounded-lg hover:bg-white/20 transition lg:hidden"
+              >
+                <Menu size={20} />
+              </button>
+              <div className="flex items-center gap-3">
+                <Bot size={28} />
+                <div>
+                  <h1 className="text-xl font-bold">Assistant IA Souk Data Mining</h1>
+                  <p className="text-green-100 text-sm hidden sm:block">
+                    Je réponds à vos questions sur les prix et l'inflation
+                  </p>
+                </div>
               </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm bg-green-600 px-3 py-1 rounded-full hidden sm:inline-block">
+                👤 {user?.name}
+              </span>
+              <button
+                onClick={logout}
+                className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded-lg transition text-sm flex items-center gap-1"
+              >
+                <LogOut size={16} />
+                Déconnexion
+              </button>
             </div>
           </div>
         </div>
@@ -282,60 +312,64 @@ export default function AIPage() {
 
             {/* Liste des conversations */}
             <div className="space-y-2">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">Historique</p>
-              {conversations.map(conv => (
-                <div
-                  key={conv.id}
-                  onClick={() => switchConversation(conv.id)}
-                  className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition ${
-                    currentConversationId === conv.id
-                      ? 'bg-green-50 border-l-4 border-green-600'
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <MessageSquare size={16} className="text-gray-400 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      {editingTitleId === conv.id ? (
-                        <input
-                          type="text"
-                          value={editTitleValue}
-                          onChange={(e) => setEditTitleValue(e.target.value)}
-                          onBlur={() => finishRename(conv.id)}
-                          onKeyPress={(e) => e.key === 'Enter' && finishRename(conv.id)}
-                          className="w-full text-sm border rounded px-2 py-1 focus:outline-none focus:border-green-500"
-                          autoFocus
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      ) : (
-                        <>
-                          <p className="text-sm font-medium text-gray-700 truncate">
-                            {conv.title}
-                          </p>
-                          <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                            <Clock size={10} />
-                            {formatDate(conv.updatedAt)}
-                          </p>
-                        </>
-                      )}
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">📁 Historique</p>
+              {conversations.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">Aucune conversation</p>
+              ) : (
+                conversations.map(conv => (
+                  <div
+                    key={conv.id}
+                    onClick={() => switchConversation(conv.id)}
+                    className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition ${
+                      currentConversationId === conv.id
+                        ? 'bg-green-50 border-l-4 border-green-600'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <MessageSquare size={16} className="text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        {editingTitleId === conv.id ? (
+                          <input
+                            type="text"
+                            value={editTitleValue}
+                            onChange={(e) => setEditTitleValue(e.target.value)}
+                            onBlur={() => finishRename(conv.id)}
+                            onKeyPress={(e) => e.key === 'Enter' && finishRename(conv.id)}
+                            className="w-full text-sm border rounded px-2 py-1 focus:outline-none focus:border-green-500"
+                            autoFocus
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : (
+                          <>
+                            <p className="text-sm font-medium text-gray-700 truncate">
+                              {conv.title}
+                            </p>
+                            <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                              <Clock size={10} />
+                              {formatDate(conv.updatedAt)}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <button
+                        onClick={(e) => startRename(conv, e)}
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
+                        <Edit2 size={14} className="text-gray-500" />
+                      </button>
+                      <button
+                        onClick={(e) => deleteConversation(conv.id, e)}
+                        className="p-1 hover:bg-red-100 rounded"
+                      >
+                        <Trash2 size={14} className="text-red-500" />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                    <button
-                      onClick={(e) => startRename(conv, e)}
-                      className="p-1 hover:bg-gray-200 rounded"
-                    >
-                      <Edit2 size={14} className="text-gray-500" />
-                    </button>
-                    <button
-                      onClick={(e) => deleteConversation(conv.id, e)}
-                      className="p-1 hover:bg-red-100 rounded"
-                    >
-                      <Trash2 size={14} className="text-red-500" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>

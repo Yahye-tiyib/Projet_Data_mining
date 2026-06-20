@@ -1,0 +1,101 @@
+{
+  "app": {
+    "title": "Souk Data Mining",
+    "subtitle": "Observatoire des prix en milieu rural",
+    "description": "Suivez l'inflation à la source dans les souks marocains"
+  },
+  "nav": {
+    "home": "Accueil",
+    "dashboard": "Dashboard",
+    "submit": "✏️ Saisir un prix",
+    "login": "🔑 Connexion",
+    "logout": "Déconnexion",
+    "assistant": "Assistant IA",
+    "admin": "👑 Admin",
+    "welcome": "Bonjour"
+  },
+  "home": {
+    "hero_title": "Observatoire des prix en milieu rural",
+    "hero_subtitle": "Suivez l'inflation à la source dans les souks marocains",
+    "cta": "✏️ Contribuer maintenant",
+    "how_it_works": "Comment ça fonctionne ?",
+    "step1_title": "Collecte géolocalisée",
+    "step1_desc": "Saisissez les prix que vous observez au souk. Votre position est automatiquement capturée.",
+    "step2_title": "Analyse automatique",
+    "step2_desc": "Notre algorithme détecte les anomalies de prix et calcule l'inflation par région.",
+    "step3_title": "Impact citoyen",
+    "step3_desc": "Les données sont accessibles à tous pour mieux comprendre et négocier les prix."
+  },
+  "auth": {
+    "login_title": "Connexion",
+    "register_title": "Inscription",
+    "login_desc": "Connectez-vous pour contribuer",
+    "register_desc": "Créez un compte pour contribuer",
+    "email": "Email",
+    "password": "Mot de passe",
+    "confirm_password": "Confirmer le mot de passe",
+    "name": "Nom complet",
+    "login_btn": "Se connecter",
+    "register_btn": "S'inscrire",
+    "have_account": "Déjà un compte ? Se connecter",
+    "no_account": "Pas encore de compte ? S'inscrire",
+    "register_success": "Inscription réussie ! Connectez-vous."
+  },
+  "submit": {
+    "title": "Nouvelle observation",
+    "product": "🛒 Produit",
+    "price": "💰 Prix",
+    "quantity": "Quantité",
+    "unit": "Unité",
+    "gps_status": "Position actuelle",
+    "simulate": "Simuler",
+    "save": "Enregistrer l'observation",
+    "saved": "✅ Observation enregistrée avec succès !",
+    "gps_required": "📍 Veuillez activer votre GPS ou simuler une position"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "subtitle": "Analysez l'évolution des prix en milieu rural",
+    "filters": "Filtres",
+    "product": "Produit",
+    "city1": "Ville 1",
+    "city2": "Ville 2",
+    "compare": "Comparer les prix",
+    "current_price": "Prix actuel",
+    "last_week": "Prix (semaine dernière)",
+    "variation": "Variation",
+    "count": "Nombre d'observations",
+    "evolution": "Évolution des prix",
+    "comparator": "Comparateur de prix par ville",
+    "analysis": "Analyse",
+    "recommendations": "Recommandations",
+    "no_data": "Aucune donnée pour ce produit"
+  },
+  "admin": {
+    "title": "Administration",
+    "subtitle": "Gestion des observations de prix",
+    "total": "Total observations",
+    "products": "Produits distincts",
+    "avg_price": "Prix moyen",
+    "add": "Ajouter une observation",
+    "delete_all": "Tout supprimer",
+    "confirm_delete": "⚠️ Supprimer définitivement ?",
+    "confirm_delete_all": "⚠️⚠️⚠️ SUPPRIMER TOUTES LES DONNÉES ? Action irréversible !"
+  },
+  "ai": {
+    "title": "Assistant IA",
+    "subtitle": "Je réponds à vos questions sur les prix et l'inflation",
+    "placeholder": "Posez votre question sur les prix, l'inflation, les recommandations...",
+    "send": "Envoyer",
+    "new_chat": "Nouvelle conversation",
+    "history": "📁 Historique",
+    "no_conversations": "Aucune conversation",
+    "guest": "💬 Invité",
+    "welcome": "👋 Bonjour ! Je suis l'assistant IA de Souk Data Mining. Je peux vous aider à :\n\n• Connaître les prix moyens par produit\n• Comparer les prix entre régions\n• Comprendre les tendances d'inflation\n• Vous donner des conseils d'achat\n\nQue souhaitez-vous savoir ?",
+    "error": "❌ Désolé, une erreur est survenue. Veuillez réessayer plus tard."
+  },
+  "footer": {
+    "copyright": "© 2025 Souk Data Mining - Plateforme citoyenne open source",
+    "data": "Données collectées par et pour les citoyens des zones rurales"
+  }
+}

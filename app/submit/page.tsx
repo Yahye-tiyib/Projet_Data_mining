@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { useRouter } from 'next/navigation';
-import { MapPin, Save, AlertCircle, Info } from 'lucide-react';
+import { MapPin, Save, AlertCircle } from 'lucide-react';
 
 export default function SubmitPage() {
   const { isAuthenticated, token, user } = useAuth();
+  const { t, language } = useLanguage();
   const router = useRouter();
   const [product, setProduct] = useState('');
   const [price, setPrice] = useState('');
@@ -18,35 +20,50 @@ export default function SubmitPage() {
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<{ lat: number | null; lng: number | null }>({ lat: null, lng: null });
   const [locationStatus, setLocationStatus] = useState('En attente du GPS...');
-  const [dailyLimit, setDailyLimit] = useState({ todayCount: 0, nextAllowed: null });
 
+  // Liste des produits (en français, utilisés pour la base de données)
   const products = [
     'Tomates', 'Oignons', 'Pommes de terre', 'Pommes', 
     'Poulet', 'Œufs', 'Carottes', 'Courgettes', 'Orange'
   ];
 
-  // Rediriger si non authentifié
+  // Traduction des produits
+  const productTranslations: Record<string, Record<string, string>> = {
+    fr: {
+      'Tomates': 'Tomates',
+      'Oignons': 'Oignons',
+      'Pommes de terre': 'Pommes de terre',
+      'Pommes': 'Pommes',
+      'Poulet': 'Poulet',
+      'Œufs': 'Œufs',
+      'Carottes': 'Carottes',
+      'Courgettes': 'Courgettes',
+      'Orange': 'Orange'
+    },
+    ar: {
+      'Tomates': 'طماطم',
+      'Oignons': 'بصل',
+      'Pommes de terre': 'بطاطس',
+      'Pommes': 'تفاح',
+      'Poulet': 'دجاج',
+      'Œufs': 'بيض',
+      'Carottes': 'جزر',
+      'Courgettes': 'كوسا',
+      'Orange': 'برتقال'
+    }
+  };
+
+  // Fonction pour obtenir le nom du produit en fonction de la langue
+  const getProductLabel = (productName: string) => {
+    return productTranslations[language]?.[productName] || productName;
+  };
+
+  // Rediriger si non connecté
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login');
     }
   }, [isAuthenticated, router]);
-
-  // Récupérer les statistiques de l'utilisateur
-  useEffect(() => {
-    if (token) {
-      fetch('/api/user/stats', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.todayCount !== undefined) {
-            setDailyLimit(data);
-          }
-        })
-        .catch(err => console.error('Erreur stats:', err));
-    }
-  }, [token]);
 
   // Fonction pour obtenir la position GPS
   const getLocation = () => {
@@ -82,16 +99,14 @@ export default function SubmitPage() {
     setError('');
     setSuccessMessage('');
 
-    // Vérifier que la position GPS est capturée
     if (!location.lat || !location.lng) {
-      setError('📍 Veuillez activer votre GPS ou simuler une position');
+      setError(t('submit.gps_required'));
       setLoading(false);
       return;
     }
 
-    // Vérifier que le prix est valide
     if (!price || parseFloat(price) <= 0) {
-      setError('💰 Veuillez entrer un prix valide');
+      setError(t('submit.valid_price'));
       setLoading(false);
       return;
     }
@@ -118,32 +133,27 @@ export default function SubmitPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setSuccessMessage(data.message || '✅ Observation enregistrée avec succès !');
+        setSuccessMessage(data.message || t('submit.saved'));
         setSubmitted(true);
         setTimeout(() => setSubmitted(false), 4000);
         setProduct('');
         setPrice('');
         setQuantity('1');
         getLocation();
-        
-        // Mettre à jour les statistiques
-        setDailyLimit(prev => ({ ...prev, todayCount: prev.todayCount + 1 }));
-        
       } else if (response.status === 429) {
-        // Limite atteinte (utilisateur ou emplacement)
         setError(data.error);
         if (data.nextAllowed) {
-          const nextDate = new Date(data.nextAllowed).toLocaleDateString('fr-FR');
-          setError(`${data.error}\n📅 Prochaine saisie possible : ${nextDate}`);
+          const nextDate = new Date(data.nextAllowed).toLocaleDateString(language === 'ar' ? 'ar-MA' : 'fr-FR');
+          setError(`${data.error}\n📅 ${t('submit.next_allowed')} : ${nextDate}`);
         }
         if (data.existingPrice) {
-          setError(`${data.error}\n💰 Prix existant aujourd'hui : ${data.existingPrice} DH`);
+          setError(`${data.error}\n💰 ${t('submit.existing_price')} : ${data.existingPrice} DH`);
         }
       } else {
-        setError(data.error || 'Erreur lors de la sauvegarde');
+        setError(data.error || t('submit.save_error'));
       }
     } catch (err) {
-      setError('❌ Erreur de connexion au serveur');
+      setError(t('submit.server_error'));
     } finally {
       setLoading(false);
     }
@@ -151,117 +161,96 @@ export default function SubmitPage() {
 
   const simulateLocation = (lat: number, lng: number, cityName: string) => {
     setLocation({ lat, lng });
-    setLocationStatus(`✅ Simulation: ${cityName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
+    setLocationStatus(`✅ ${t('submit.simulate')}: ${cityName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
   };
 
   if (!isAuthenticated) {
     return null;
   }
 
+  const isRTL = language === 'ar';
+
   return (
-    <div className="bg-gray-50 min-h-screen py-8">
+    <div className={`bg-gray-50 min-h-screen py-8 ${isRTL ? 'rtl' : 'ltr'}`}>
       <div className="container mx-auto max-w-md px-4">
         
-        {/* En-tête */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-green-700">
-            ➕ Nouvelle observation
+            ➕ {t('submit.title')}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Bonjour {user?.name} ! Contribuez à la base de données citoyenne
+            {t('submit.greeting')} {user?.name} !
           </p>
         </div>
 
-        {/* Message de limite quotidienne */}
-        {dailyLimit.todayCount > 0 && (
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-6">
-            <div className="flex items-center gap-2">
-              <Info size={18} className="text-blue-600" />
-              <p className="text-blue-700 text-sm font-medium">
-                📊 Vous avez déjà saisi {dailyLimit.todayCount} prix aujourd'hui.
-              </p>
-            </div>
-            <p className="text-blue-600 text-xs mt-1">
-              ⚠️ Un seul prix par produit et par jour est autorisé.
-            </p>
-          </div>
-        )}
-
-        {/* Message de succès */}
         {submitted && successMessage && (
           <div className="bg-green-100 border-l-4 border-green-500 p-4 rounded-lg mb-6">
             <p className="text-green-700 text-sm">{successMessage}</p>
           </div>
         )}
 
-        {/* Message d'erreur */}
         {error && (
           <div className="bg-red-100 border-l-4 border-red-500 p-4 rounded-lg mb-6 whitespace-pre-line">
             <p className="text-red-700 text-sm">{error}</p>
           </div>
         )}
 
-        {/* Carte GPS */}
         <div className="bg-white p-4 rounded-lg shadow mb-6 border-l-4 border-green-500">
           <div className="flex items-center gap-2 mb-2">
             <MapPin className="text-green-600" size={20} />
-            <span className="font-semibold">📍 Position actuelle</span>
+            <span className="font-semibold">{t('submit.gps_status')}</span>
           </div>
           <p className="text-sm text-gray-600">{locationStatus}</p>
-          <p className="text-xs text-gray-400 mt-1">
-            ⚠️ La position est obligatoire pour valider le prix
-          </p>
+          <p className="text-xs text-gray-400 mt-1">{t('submit.gps_required_msg')}</p>
           
-          {/* Boutons de simulation */}
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" onClick={() => simulateLocation(30.4278, -9.5981, 'Agadir')} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
-              📍 Simuler Agadir
+              📍 {t('submit.simulate')} Agadir
             </button>
             <button type="button" onClick={() => simulateLocation(33.5731, -7.5898, 'Casablanca')} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
-              📍 Simuler Casablanca
+              📍 {t('submit.simulate')} Casablanca
             </button>
             <button type="button" onClick={() => simulateLocation(31.6295, -7.9811, 'Marrakech')} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
-              📍 Simuler Marrakech
+              📍 {t('submit.simulate')} Marrakech
             </button>
             <button type="button" onClick={() => simulateLocation(35.7595, -5.8340, 'Tanger')} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
-              📍 Simuler Tanger
+              📍 {t('submit.simulate')} Tanger
             </button>
             <button type="button" onClick={() => simulateLocation(34.0209, -6.8416, 'Rabat')} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
-              📍 Simuler Rabat
+              📍 {t('submit.simulate')} Rabat
             </button>
             <button type="button" onClick={getLocation} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200">
-              🔄 GPS réel
+              🔄 {t('submit.gps_real')}
             </button>
           </div>
         </div>
 
-        {/* Formulaire */}
         <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow space-y-5">
-          
-          {/* Produit */}
           <div>
-            <label className="block font-semibold mb-2">🛒 Produit *</label>
+            <label className="block font-semibold mb-2">{t('submit.product')} *</label>
             <div className="grid grid-cols-3 gap-2">
-              {products.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setProduct(p)}
-                  className={`py-2 px-3 text-sm rounded-lg border transition ${
-                    product === p
-                      ? 'bg-green-500 text-white border-green-500'
-                      : 'bg-gray-100 border-gray-200 hover:bg-gray-200'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
+              {products.map((p) => {
+                const displayName = getProductLabel(p);
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setProduct(p)}
+                    className={`py-2 px-3 text-sm rounded-lg border transition ${
+                      product === p
+                        ? 'bg-green-500 text-white border-green-500'
+                        : 'bg-gray-100 border-gray-200 hover:bg-gray-200'
+                    }`}
+                  >
+                    {displayName}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Prix */}
           <div>
-            <label className="block font-semibold mb-2">💰 Prix *</label>
+            <label className="block font-semibold mb-2">{t('submit.price')} *</label>
             <div className="flex gap-3">
               <input
                 type="number"
@@ -291,26 +280,23 @@ export default function SubmitPage() {
             </div>
           </div>
 
-          {/* Rappel des règles */}
           <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-500">
-            <p className="font-semibold mb-1">📋 Règles de contribution :</p>
+            <p className="font-semibold mb-1">{t('submit.rules_title')}</p>
             <ul className="list-disc list-inside space-y-1 ml-2">
-              <li>Un seul prix par produit et par jour pour chaque utilisateur</li>
-              <li>Un seul prix par emplacement et par jour pour chaque produit</li>
-              <li>La position GPS est obligatoire</li>
+              <li>{t('submit.rule1')}</li>
+              <li>{t('submit.rule2')}</li>
+              <li>{t('submit.rule3')}</li>
             </ul>
           </div>
 
-          {/* Bouton submit */}
           <button
             type="submit"
             disabled={!product || !price || loading}
             className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Save size={20} />
-            {loading ? 'Enregistrement...' : 'Enregistrer l\'observation'}
+            {loading ? t('submit.saving') : t('submit.save')}
           </button>
-
         </form>
       </div>
     </div>

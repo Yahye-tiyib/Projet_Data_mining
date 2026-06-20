@@ -1,107 +1,77 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import Groq from 'groq-sdk';
+import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+function getUserFromToken(token: string) {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET || 'secret123');
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   try {
-    const { question, userLocation } = await request.json();
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.split(' ')[1];
     
-    // 1. Récupérer les données réelles
+    if (!token) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+    
+    const user = getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+    }
+    
+    const { question } = await request.json();
+    
+    // Récupérer les données (uniquement celles de l'utilisateur si besoin)
     const observations = await prisma.observation.findMany({
       take: 200,
       orderBy: { createdAt: 'desc' }
     });
     
-    // 2. Calculer les statistiques
+    // ... reste du traitement
     const products = [...new Set(observations.map(o => o.product))];
-    
-    const stats = products.map(product => {
-      const productObs = observations.filter(o => o.product === product);
-      const prices = productObs.map(o => o.price);
+    const avgPrices = products.map(product => {
+      const prices = observations.filter(o => o.product === product).map(o => o.price);
       const avg = prices.reduce((a,b) => a+b, 0) / prices.length;
-      const min = Math.min(...prices);
-      const max = Math.max(...prices);
-      const lastPrice = productObs[0]?.price || 0;
-      
-      return {
-        product,
-        avg: avg.toFixed(2),
-        min,
-        max,
-        lastPrice,
-        count: productObs.length
-      };
+      return `${product}: ${avg.toFixed(2)} DH/kg`;
     });
     
-    // 3. Détecter les tendances
-    const today = new Date();
-    const lastWeek = new Date();
-    lastWeek.setDate(lastWeek.getDate() - 7);
-    
-    const trends = products.map(product => {
-      const current = observations.filter(o => o.product === product && new Date(o.createdAt) >= lastWeek);
-      const previous = observations.filter(o => o.product === product && new Date(o.createdAt) < lastWeek);
-      
-      const currentAvg = current.length ? current.reduce((a,b) => a+b.price, 0) / current.length : 0;
-      const previousAvg = previous.length ? previous.reduce((a,b) => a+b.price, 0) / previous.length : 0;
-      const variation = previousAvg ? ((currentAvg - previousAvg) / previousAvg) * 100 : 0;
-      
-      return { product, variation: variation.toFixed(1), trend: variation > 5 ? 'hausse' : variation < -5 ? 'baisse' : 'stable' };
-    });
-    
-    // 4. Construire le prompt
     const prompt = `
-      Tu es un assistant IA pour "Souk Data Mining", une plateforme citoyenne qui suit les prix des souks au Maroc.
+      Données actuelles de la base Souk Data Mining :
+      ${avgPrices.join('\n')}
       
-      📊 DONNÉES ACTUELLES:
-      - ${observations.length} observations au total
+      L'utilisateur ${user.name} demande : "${question}"
       
-      Prix moyens (DH/kg):
-      ${stats.map(s => `- ${s.product}: ${s.avg} DH (min: ${s.min}, max: ${s.max}, dernières: ${s.lastPrice} DH)`).join('\n')}
-      
-      Tendances (7 derniers jours):
-      ${trends.map(t => `- ${t.product}: ${t.trend} (${t.variation}%)`).join('\n')}
-      
-      ${userLocation ? `📍 Localisation utilisateur: ${userLocation}` : ''}
-      
-      📝 QUESTION DE L'UTILISATEUR: "${question}"
-      
-      Règles de réponse:
-      - Sois utile, précis et concis
-      - Utilise les données réelles ci-dessus
-      - Donne des conseils pratiques pour acheter moins cher
-      - Réponds en français
-      - Si tu ne sais pas, dis-le honnêtement
+      Réponds en français, de manière utile et précise.
+      Si une question concerne le prix actuel, utilise les données disponibles.
     `;
     
-    // 5. Appeler GROQ
     const completion = await groq.chat.completions.create({
       messages: [
-        {
-          role: "system",
-          content: "Tu es un assistant expert en prix des produits alimentaires au Maroc. Tu utilises les données de la plateforme Souk Data Mining."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
+        { role: "system", content: "Tu es un assistant expert des prix des souks au Maroc." },
+        { role: "user", content: prompt }
       ],
       model: "llama-3.1-8b-instant",
-      temperature: 0.7,
+      temperature: 0.5,
     });
     
-    const answer = completion.choices[0]?.message?.content || "Désolé, je n'ai pas pu traiter votre demande.";
+    const answer = completion.choices[0]?.message?.content || "Je n'ai pas pu répondre.";
     
     return NextResponse.json({ answer });
     
   } catch (error) {
     console.error('Erreur IA:', error);
     return NextResponse.json({ 
-      answer: "❌ L'assistant IA est temporairement indisponible. Consultez le dashboard pour les informations sur les prix.",
-      error: true
-    });
+      answer: "❌ Désolé, une erreur est survenue. Veuillez réessayer plus tard.",
+      error: true 
+    }, { status: 500 });
   }
 }
